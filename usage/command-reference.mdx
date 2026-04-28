@@ -1,0 +1,120 @@
+---
+title: "takeovflow CLI flags and arguments: full reference"
+description: "Complete reference for every takeovflow flag and argument, including target inputs, scan modes, threading, output control, and severity filtering."
+---
+
+takeovflow is invoked as a Python script. The general command structure is `python3 takeovflow.py [target flags] [mode flags] [scan options]`. Every flag is optional in isolation, but at least one target (`-d`, `-f`, or `-l`) must be provided for a standard scan, and `--active-only` additionally requires `--subs-file` or `--file`. All flags below are sourced directly from the `argparse` definition in `takeovflow.py`.
+
+## Target flags
+
+<ParamField path="-d, --domain" type="string">
+  Single domain to scan. Example: `example.com`
+</ParamField>
+
+<ParamField path="-f, --file" type="string">
+  Path to a file containing domains, one per line. Lines beginning with `#` are treated as comments and skipped. In `--active-only` mode this file is used as the subdomain input list instead of a domain list.
+</ParamField>
+
+<ParamField path="-l, --list" type="string">
+  Comma-separated list of domains to scan. Example: `example.com,target.io,scope.net`
+</ParamField>
+
+## Mode flags
+
+<ParamField path="--passive-only" type="boolean" default="false">
+  Run passive subdomain discovery only (`subfinder` + `assetfinder`). Skips all active scanners: `dnsx`, `httpx`, `subjack`, `nuclei`, and CNAME pattern analysis. Cannot be used together with `--active-only`.
+</ParamField>
+
+<ParamField path="--active-only" type="boolean" default="false">
+  Skip passive discovery and run only the active phase. Requires `--subs-file` or `--file` to supply the subdomain list. Cannot be used together with `--passive-only`.
+</ParamField>
+
+<ParamField path="--subs-file" type="string">
+  Path to a pre-built subdomain list (one subdomain per line) to use as input for the active phase. Required when `--active-only` is set and `--file` is not provided.
+</ParamField>
+
+## Scan option flags
+
+<ParamField path="-t, --threads" type="integer" default="50">
+  Number of concurrent threads used for DNS resolution, HTTP probing, and CNAME checks. Increase for larger subdomain lists on fast networks; decrease if you hit rate limits or system resource constraints.
+</ParamField>
+
+<ParamField path="-r, --rate" type="integer" default="150">
+  Maximum requests per second passed to `httpx` and `dnsx` via their respective `-rate` / `-rl` flags. Tune this to stay within target rate limits.
+</ParamField>
+
+<ParamField path="--timeout" type="integer" default="30">
+  Per-tool timeout in seconds. takeovflow multiplies this base value for longer-running tools: DNS resolution and HTTP probing use `timeout × 2`; subjack and nuclei use `timeout × 4`.
+</ParamField>
+
+<ParamField path="--retries" type="integer" default="2">
+  Number of retry attempts when a tool invocation fails or times out before giving up and moving on.
+</ParamField>
+
+<ParamField path="--resolvers" type="string">
+  Path to a file of custom DNS resolvers, one IP per line. Passed to `dnsx` via its `-r` flag. Useful for bypassing default system resolvers or using trusted open resolvers during internal assessments.
+</ParamField>
+
+<ParamField path="-v, --verbose" type="boolean" default="false">
+  Enable verbose output. Prints each tool command before execution, stderr from tools on non-zero exits, per-domain resolution and HTTP counts, and the paths of generated reports. Mutually exclusive with `--quiet`.
+</ParamField>
+
+<ParamField path="-q, --quiet" type="boolean" default="false">
+  Suppress the startup banner and all intermediate status output. Only fatal errors and the final report path are printed. Ideal for wrapper scripts and CI pipelines. Mutually exclusive with `--verbose`.
+</ParamField>
+
+<ParamField path="--no-color" type="boolean" default="false">
+  Disable emoji severity indicators and colored output. Use when capturing output to a file or piping to tools that do not handle Unicode well.
+</ParamField>
+
+<ParamField path="--json-output" type="boolean" default="false">
+  Generate a JSON report in addition to the default Markdown report. The JSON file is written to the same output directory with the filename `takeovflow_report_YYYYMMDD_HHMM.json`.
+</ParamField>
+
+<ParamField path="--output-dir" type="string">
+  Directory where Markdown and JSON reports are written. Defaults to the current working directory. The directory is created automatically (including parent directories) if it does not exist.
+</ParamField>
+
+<ParamField path="--nuclei-templates" type="string">
+  Path to a custom nuclei templates directory or file. When provided, nuclei is invoked with `-t <path>` instead of the default `-tags takeover` filter.
+</ParamField>
+
+<ParamField path="--min-severity" type="string" default="INFO">
+  Minimum severity level to include in reports. Accepted values: `CRITICAL`, `HIGH`, `MEDIUM`, `LOW`, `INFO`. Findings below the threshold are excluded from both the Markdown and JSON reports. The default `INFO` includes all findings.
+</ParamField>
+
+<ParamField path="--version" type="boolean">
+  Print the takeovflow version string and exit.
+</ParamField>
+
+## Examples
+
+Full scan with verbose output on a single domain:
+
+```bash
+python3 takeovflow.py -d example.com -v
+```
+
+Scan every domain in a scope file:
+
+```bash
+python3 takeovflow.py -f scope.txt
+```
+
+Custom resolvers, custom output directory, only HIGH and above:
+
+```bash
+python3 takeovflow.py -d example.com --resolvers resolvers.txt --output-dir ./reports --min-severity HIGH
+```
+
+JSON output with 100 threads and custom nuclei templates:
+
+```bash
+python3 takeovflow.py -f scope.txt -t 100 -v --json-output --nuclei-templates ./takeover-templates/
+```
+
+Comma-separated list of domains:
+
+```bash
+python3 takeovflow.py -l example.com,target.io,scope.net
+```

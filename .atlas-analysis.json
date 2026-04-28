@@ -1,0 +1,91 @@
+{
+  "projectType": "cli-tool",
+  "projectName": "takeovflow",
+  "projectDescription": "Advanced subdomain takeover scanner that combines passive discovery, active HTTP analysis, and CNAME fingerprinting across 55 cloud service providers.",
+  "theme": "aspen",
+  "primaryColor": "#eb9eb3",
+  "lightColor": null,
+  "darkColor": null,
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "installation",
+              "quickstart"
+            ]
+          },
+          {
+            "group": "Usage",
+            "pages": [
+              "usage/scan-modes",
+              "usage/command-reference",
+              "usage/output-reports"
+            ]
+          },
+          {
+            "group": "Guides",
+            "pages": [
+              "guides/workflow-integration",
+              "guides/custom-resolvers",
+              "guides/interpreting-results"
+            ]
+          },
+          {
+            "group": "Reference",
+            "pages": [
+              "reference/supported-providers",
+              "reference/severity-levels",
+              "reference/external-tools",
+              "reference/changelog"
+            ]
+          },
+          {
+            "group": "Contributing",
+            "pages": [
+              "contributing/how-to-contribute",
+              "contributing/security"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Passive subdomain discovery via subfinder and assetfinder",
+    "Active HTTP response analysis via httpx and DNS resolution via dnsx",
+    "CNAME fingerprinting across 55 cloud service providers",
+    "Takeover confirmation with subjack and nuclei",
+    "Concurrent CNAME analysis with configurable thread count",
+    "Severity-based filtering (CRITICAL, HIGH, MEDIUM, LOW, INFO)",
+    "Markdown and JSON report generation",
+    "Graceful degradation when external tools are missing",
+    "Custom DNS resolvers support",
+    "Quiet mode for automation/wrapper integration"
+  ],
+  "publicApiSurface": [
+    "python3 takeovflow.py -d <domain>",
+    "python3 takeovflow.py -f <file>",
+    "python3 takeovflow.py -l <domain1,domain2,...>",
+    "--passive-only",
+    "--active-only",
+    "--subs-file <path>",
+    "-t / --threads <N>",
+    "-r / --rate <N>",
+    "--timeout <N>",
+    "--retries <N>",
+    "--resolvers <file>",
+    "--min-severity <CRITICAL|HIGH|MEDIUM|LOW|INFO>",
+    "--json-output",
+    "--output-dir <dir>",
+    "--nuclei-templates <path>",
+    "--no-color",
+    "-q / --quiet",
+    "-v / --verbose",
+    "--version"
+  ]
+}

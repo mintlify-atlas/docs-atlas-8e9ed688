@@ -1,0 +1,95 @@
+---
+title: "How to contribute CNAME fingerprints and fixes to takeovflow"
+description: "Learn how to contribute new CNAME fingerprints, fix false positives, improve service detection logic, and submit pull requests to the takeovflow project."
+---
+
+Contributions to takeovflow are welcome. The most impactful contributions are new CNAME fingerprints, false positive fixes, and improvements to service detection logic — each of which directly expands the tool's coverage and accuracy for the whole community.
+
+## What you can contribute
+
+<CardGroup cols={2}>
+  <Card title="New CNAME fingerprints" icon="magnifying-glass">
+    Add service patterns to `CNAME_SERVICES` to expand detection coverage across more hosting providers.
+  </Card>
+  <Card title="False positive fixes" icon="bug">
+    Improve provider-specific detection logic to reduce noise and increase result confidence.
+  </Card>
+  <Card title="Bug fixes" icon="wrench">
+    Fix issues with tool invocation, timeout handling, or report generation.
+  </Card>
+  <Card title="Documentation" icon="book">
+    Improve guides, examples, and reference pages to help users get the most out of takeovflow.
+  </Card>
+</CardGroup>
+
+## Adding a new CNAME fingerprint
+
+Adding a new CNAME fingerprint is the most common and highest-impact contribution. Fingerprints live in the `CNAME_SERVICES` list inside `takeovflow.py`. Each entry maps a CNAME pattern to a service name and a severity level that signals how likely a match is to be exploitable.
+
+<Steps>
+  <Step title="Open takeovflow.py and find CNAME_SERVICES">
+    The `CNAME_SERVICES` list starts around line 62. It holds tuples of the form `(cname_pattern, service_name, severity)`.
+
+    ```python
+    CNAME_SERVICES: List[Tuple[str, str, str]] = [
+        ("amazonaws.com",        "AWS S3 / Elastic Beanstalk", "HIGH"),
+        ("azurewebsites.net",    "Azure Web Apps",              "HIGH"),
+        ("github.io",            "GitHub Pages",                "HIGH"),
+        # ...
+    ]
+    ```
+  </Step>
+  <Step title="Add a new tuple for the service">
+    Each tuple has three fields:
+
+    - **CNAME pattern** — the string that should appear in the CNAME record (e.g., `"myservice.net"`).
+    - **Service name** — a human-readable provider name.
+    - **Severity** — use `HIGH` if the service is known to allow claiming abandoned resources; use `MEDIUM` if the finding requires manual verification.
+  </Step>
+  <Step title="Example: adding ExampleHost">
+    To add a new service called "ExampleHost" whose custom domains resolve to `*.examplehost.net`:
+
+    ```python
+    ("examplehost.net", "ExampleHost", "HIGH"),
+    ```
+
+    Insert the line inside the `CNAME_SERVICES` list, keeping the existing formatting consistent.
+  </Step>
+  <Step title="Test your fingerprint">
+    Run takeovflow against a domain that has the target CNAME pattern and confirm the new entry is detected and reported correctly. Test against a live or mock environment before opening a PR.
+  </Step>
+  <Step title="Open a pull request">
+    Submit a PR against `main` that describes the service, the CNAME pattern used, and a reference (writeup or nuclei template) if one is available for the provider.
+  </Step>
+</Steps>
+
+## How to submit a PR
+
+<Steps>
+  <Step title="Fork the repository">
+    Fork the project on GitHub: [https://github.com/theoffsecgirl/takeovflow](https://github.com/theoffsecgirl/takeovflow)
+  </Step>
+  <Step title="Create a branch">
+    Use a descriptive branch name that reflects your change:
+
+    ```bash
+    git checkout -b feature/add-examplehost-fingerprint
+    ```
+  </Step>
+  <Step title="Make your changes">
+    Implement your contribution, following the guidelines below.
+  </Step>
+  <Step title="Open a pull request against main">
+    In your PR description, explain what you added and why — include the service name, the CNAME pattern, and any supporting references.
+  </Step>
+</Steps>
+
+## Guidelines
+
+- **Keep changes focused** — submit one thing per PR. A single new fingerprint or a single bug fix is easier to review and merge than a batch of unrelated changes.
+- **Test before submitting** — verify your change against a live or mock environment before opening a PR.
+- **Include references** — if a writeup, nuclei template, or HackerOne report exists for the provider you are adding, link to it in the PR description.
+
+<Info>
+  For questions about contributing, reach out at [info@theoffsecgirl.com](mailto:info@theoffsecgirl.com).
+</Info>

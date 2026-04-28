@@ -1,0 +1,76 @@
+---
+title: "takeovflow release history: changelog from v1.0 to v1.5"
+description: "Release notes for takeovflow versions 1.0.0 through 1.5.1, including new CNAME fingerprints, performance improvements, and bug fixes."
+---
+
+This page documents all notable changes to takeovflow since the initial 1.0.0 release. Versions are listed from most recent to oldest.
+
+<AccordionGroup>
+
+  <Accordion title="v1.5.1 — current">
+    This is the current release. The source code reports `__version__ = "1.5.1"`. Detailed release notes beyond v1.3.0 are not yet published in the changelog.
+  </Accordion>
+
+  <Accordion title="v1.3.0">
+    **Performance**
+    - Concurrent CNAME analysis via `ThreadPoolExecutor` — previously sequential `dig` calls, now fully parallel (controlled by `--threads`). Up to 50x faster on large subdomain lists.
+
+    **New fingerprints**
+    - 55 CNAME service fingerprints (up from 19). New services include: Netlify, Vercel, Webflow, GitBook, Statuspage, Bitbucket Pages, Pantheon, Kinsta, HubSpot Sites, Freshdesk, Intercom, Cargo, Wix, Weebly, Tilda, Acquia, Launchrock, AfterShip, BigCartel, FeedPress, Azure Blob/API/CloudApp, Heroku App, and Elastic Beanstalk. Each fingerprint includes service name and severity.
+
+    **New features**
+    - Severity system (`HIGH` / `MEDIUM` / `LOW` / `INFO`) across all finding sources. nuclei severity is parsed from actual output (`[critical]`, `[high]`, `[medium]`, `[low]`, `[info]` tags).
+    - Finding deduplication — the same subdomain reported by multiple tools appears only once in the output.
+    - New flags: `--timeout`, `--retries`, `--resolvers`, `--output-dir`, `--min-severity`, `--no-color`.
+    - Real-time finding output to stdout as each takeover candidate is detected.
+    - Markdown report uses tables: a summary table and per-domain findings tables sorted by severity.
+    - JSON report includes `started` and `finished` timestamps, and uses `ensure_ascii=False`.
+    - UTC timestamps now use `timezone.utc` (replaces deprecated `datetime.utcnow()`).
+
+    **Fixed**
+    - `normalize_domains()` now correctly strips paths and ports from URLs (e.g., `http://example.com:8080/path` → `example.com`).
+    - Subdomain filter removes entries without a dot, eliminating assetfinder false positives.
+    - `run_cmd` rewritten with `subprocess.run` and a real timeout. No more indefinite hangs on slow tools.
+    - `stderr` captured optionally in verbose mode to surface real tool errors.
+
+    **Changed**
+    - `run_cmd` signature extended with `capture_stderr`, `timeout`, and `retries` parameters.
+    - `CNAME_TAKEOVER_PATTERNS` (list of strings) replaced by `CNAME_SERVICES` (list of tuples containing pattern, service name, and severity).
+    - Banner width updated.
+  </Accordion>
+
+  <Accordion title="v1.2.0">
+    **New features**
+    - `--subs-file <path>`: accepts an external subdomains file to use directly in the active phase.
+    - `validate_args()`: validates invalid flag combinations at startup (e.g., `--passive-only` combined with `--active-only` exits with an error message).
+    - Additional CNAME patterns: `shopify.com`, `helpjuice.com`, `helpscoutdocs.com`, `ghost.io`, `readme.io`, `surge.sh`.
+    - Timestamp with hour and minute in report filename: `takeovflow_report_YYYYMMDD_HHMM.md`.
+    - JSON report now includes `tool` and `version` fields.
+    - `--version` flag.
+
+    **Fixed**
+    - `--active-only` no longer fails silently: it now correctly loads subdomains from `--subs-file` or `--file` and runs all active scanners.
+
+    **Changed**
+    - Report filename renamed: `subdomain_takeover_report_*.md` → `takeovflow_report_*.md`.
+    - Argparse reorganized into groups: `targets`, `mode`, `scan options`.
+  </Accordion>
+
+  <Accordion title="v1.1.0">
+    **New features**
+    - `check_available_tools()`: takeovflow no longer aborts when a tool is missing. It reports which tools were not found and skips the corresponding phases.
+    - Banner and version badges added to the CLI output.
+
+    **Changed**
+    - Repository renamed: `tool-takeovflow` → `takeovflow`.
+  </Accordion>
+
+  <Accordion title="v1.0.0">
+    **Initial release**
+    - Core subdomain takeover scanner with passive discovery via subfinder and assetfinder.
+    - Active scanning via dnsx, httpx, subjack, and nuclei.
+    - CNAME pattern matching against a set of known cloud provider fingerprints.
+    - Markdown and JSON report output.
+  </Accordion>
+
+</AccordionGroup>

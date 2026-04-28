@@ -1,0 +1,53 @@
+---
+title: "takeovflow security policy and responsible disclosure"
+description: "takeovflow's security policy covers responsible disclosure for vulnerabilities in the tool itself, supported versions, and expected response timelines."
+---
+
+This page covers the security policy for takeovflow the tool itself — not vulnerabilities you discover using it against third-party targets. If you find a security issue in the project's own code, please follow the responsible disclosure process described below.
+
+## Supported versions
+
+| Version | Supported |
+|---------|-----------|
+| 1.x     | Yes       |
+
+## Reporting a vulnerability
+
+If you find a security issue in takeovflow itself, report it responsibly by following these steps.
+
+<Steps>
+  <Step title="Do not open a public GitHub issue">
+    Public issues expose the vulnerability before a fix is available. Keep the report private until it has been addressed.
+  </Step>
+  <Step title="Send an email to info@theoffsecgirl.com">
+    Contact the maintainers directly at [info@theoffsecgirl.com](mailto:info@theoffsecgirl.com).
+  </Step>
+  <Step title="Include the following in your report">
+    Provide enough detail to reproduce and assess the issue:
+
+    - A clear description of the vulnerability
+    - Step-by-step reproduction steps
+    - The potential impact on users running the tool
+  </Step>
+  <Step title="Wait for a response">
+    You can expect an acknowledgement within **72 hours**.
+  </Step>
+</Steps>
+
+## Scope
+
+The following are in scope for responsible disclosure:
+
+- Bugs in takeovflow's own code that could affect users running the tool — for example, command injection via malformed domain input or unsafe subprocess calls.
+- Information disclosure issues in report generation that could expose unintended data.
+
+## Out of scope
+
+The following are explicitly out of scope:
+
+- **Vulnerabilities found in targets you scan using takeovflow** — those should be reported directly to the target organization's bug bounty program or security team.
+- **Issues in external tools** such as subfinder or nuclei — report those to their respective upstream projects.
+
+<Warning>
+  takeovflow is designed for authorized security testing only. Any misuse is outside the scope of this project and the sole responsibility of the user.
+</Warning>

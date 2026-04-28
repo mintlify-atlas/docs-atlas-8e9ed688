@@ -1,0 +1,56 @@
+---
+title: "Integrate takeovflow into recon and automation pipelines"
+description: "Chain takeovflow with subfinder, assetfinder, and other recon tools. Use active-only mode to scan external subdomain lists in CI or automated pipelines."
+---
+
+takeovflow is designed to slot into existing recon pipelines. The built-in passive discovery phase — powered by `subfinder` and `assetfinder` — can be replaced entirely by any external tool that produces a plain subdomain list. Pass that list to `--subs-file` with `--active-only` and takeovflow will run the full active scanning phase (DNS resolution, HTTP probing, subjack, nuclei, and CNAME fingerprinting) without repeating passive discovery.
+
+## Full recon pipeline
+
+Run `subfinder` first to discover subdomains, then hand the result directly to takeovflow's active phase. The `--json-output` flag saves a machine-readable report alongside the default Markdown report.
+
+```bash
+subfinder -d example.com -silent > subdomains.txt && \
+  python3 takeovflow.py --active-only --subs-file subdomains.txt -d example.com --json-output
+```
+
+## After assetfinder
+
+`assetfinder` can substitute for `subfinder`. The workflow is identical — pipe the output to a file, then pass it to `--subs-file`.
+
+```bash
+assetfinder --subs-only example.com > subs.txt && \
+  python3 takeovflow.py --active-only --subs-file subs.txt -d example.com
+```
+
+## Multiple targets at scale
+
+When scanning a scope file with many domains, increase thread count with `-t`, restrict reporting to actionable findings with `--min-severity`, and collect all reports in a dedicated directory with `--output-dir`.
+
+```bash
+python3 takeovflow.py -f scope.txt -t 100 --min-severity HIGH --json-output --output-dir ./results
+```
+
+## CI / automation mode
+
+The `--quiet` flag suppresses the banner and all intermediate progress output. Only fatal errors and the final report path are emitted to stdout, making it safe to use in CI pipelines where noisy output breaks log parsers. Combine it with `--json-output` to get a machine-readable report at a predictable path.
+
+```bash
+python3 takeovflow.py -d example.com --quiet --json-output --output-dir ./reports
+```
+
+<Note>
+`--quiet` and `--verbose` are mutually exclusive. Using both will cause takeovflow to exit with an error.
+</Note>
+
+## Processing reports
+
+JSON reports follow a consistent structure under the `domains` key, making them straightforward to query with `jq`. Each domain entry contains a `potential_takeovers` array with all deduplicated findings.
+
+```bash
+jq '.domains | to_entries[] | .value.potential_takeovers[]' takeovflow_report_*.json
+```
+
+<Tip>
+When using `--active-only`, you can omit `-d` if your subdomain file already has the full context. takeovflow will use `scope` as the domain name in the report.
+</Tip>

@@ -1,0 +1,57 @@
+---
+title: "Configure custom DNS resolvers for takeovflow scans"
+description: "Supply a custom DNS resolver list to takeovflow to improve accuracy, avoid rate limiting, and bypass ISP-level filtering during subdomain resolution with dnsx."
+---
+
+In large-scale scans, relying on a single resolver or your system's default DNS server can introduce rate limiting, ISP-level filtering, or inconsistent CNAME resolution — all of which reduce scan accuracy. Supplying a curated list of public resolvers distributes the query load, reduces the chance of dropped lookups, and avoids situations where your ISP returns inaccurate responses for non-existent domains (a common cause of false positives in CNAME fingerprinting).
+
+## Creating a resolvers file
+
+The resolvers file is a plain text file with one IP address per line. No hostnames, no ports — just IPv4 addresses.
+
+```text
+8.8.8.8
+8.8.4.4
+1.1.1.1
+1.0.0.1
+9.9.9.9
+208.67.222.222
+```
+
+Save this file as `resolvers.txt` (or any filename you prefer) in your working directory.
+
+## Using the resolvers file
+
+Pass the file to takeovflow with the `--resolvers` flag:
+
+```bash
+python3 takeovflow.py -d example.com --resolvers resolvers.txt
+```
+
+Combine with other flags as needed:
+
+```bash
+python3 takeovflow.py -d example.com --resolvers resolvers.txt --output-dir ./reports --min-severity HIGH -v
+```
+
+## How resolvers are passed
+
+The `--resolvers` flag is passed directly to `dnsx` via its `-r` flag. This affects only the DNS resolution phase, where takeovflow resolves subdomains to check which ones are live.
+
+The CNAME fingerprinting phase uses `dig` directly and is **not** affected by `--resolvers`. CNAME lookups via `dig` always use the system's default resolver.
+
+## Rate limiting
+
+The `-r` / `--rate` flag (default: 150 req/s) controls how fast `dnsx` and `httpx` send requests. If you are seeing dropped connections, timeouts, or inconsistent results, lower the rate to reduce load on the resolvers.
+
+```bash
+python3 takeovflow.py -d example.com --resolvers resolvers.txt --rate 50
+```
+
+<Info>
+If `dnsx` is not installed, takeovflow falls back to using the raw subdomain list without DNS resolution. In that case, the `--resolvers` flag has no effect regardless of what file you provide.
+</Info>
+
+<Tip>
+Public resolver lists from projects like [dnsvalidator](https://github.com/vortexau/dnsvalidator) or [massdns](https://github.com/blechschmidt/massdns) can be used directly as the resolvers file after filtering to valid IPs.
+</Tip>

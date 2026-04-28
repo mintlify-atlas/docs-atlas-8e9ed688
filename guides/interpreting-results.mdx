@@ -1,0 +1,65 @@
+---
+title: "How to interpret and triage takeovflow scan findings"
+description: "Understand each finding source in takeovflow, how severity is assigned, and how to prioritize CNAME matches, subjack, and nuclei results for triage."
+---
+
+takeovflow aggregates findings from three independent sources — `cname-pattern`, `subjack`, and `nuclei` — and each source requires a different follow-up approach. Understanding where a finding came from tells you how much confidence to place in it before investing time in manual verification.
+
+## Finding sources
+
+<AccordionGroup>
+  <Accordion title="cname-pattern">
+    CNAME fingerprinting matched a known vulnerable pattern. The subdomain has a CNAME record pointing at a cloud provider domain (e.g., `*.github.io`, `*.amazonaws.com`, `*.herokudns.com`). This finding means the DNS configuration exists — it does not confirm the underlying cloud resource is unclaimed. Check whether the cloud resource (S3 bucket name, GitHub Pages username/repo, Heroku app) actually exists and whether it is claimable by a third party.
+  </Accordion>
+  <Accordion title="subjack">
+    subjack detected that the subdomain is potentially takeable based on its fingerprint database. subjack performs active HTTP requests and checks response patterns, so results carry higher reliability than passive CNAME matching alone. Findings should still be confirmed with an HTTP request to verify the provider's "unclaimed resource" response.
+  </Accordion>
+  <Accordion title="nuclei">
+    nuclei matched a takeover template from its `tag:takeover` template set (or a custom template path if `--nuclei-templates` was provided). Results include the template name and the severity level reported by nuclei's own output — takeovflow maps nuclei's severity labels directly to its own severity scale.
+  </Accordion>
+</AccordionGroup>
+
+## Severity levels
+
+Severity is assigned per-finding by the source tool or by takeovflow's CNAME pattern table. Use `--min-severity` to filter the report to only actionable levels.
+
+| Level | Meaning |
+|-------|---------|
+| CRITICAL | Confirmed takeover vector, immediate action required |
+| HIGH | Very likely vulnerable, immediate action recommended |
+| MEDIUM | Needs manual verification |
+| LOW | Informational, low risk |
+| INFO | Context only |
+
+## Deduplication
+
+The same subdomain may be detected by more than one tool in the same scan. takeovflow deduplicates findings using a `source:subdomain` key — a subdomain appearing in both `subjack` and `cname-pattern` output generates two separate entries (one per source), but duplicate output from the same source for the same subdomain is collapsed into one.
+
+## Manual verification steps
+
+<Steps>
+  <Step title="Check the CNAME value">
+    Look at the CNAME record reported in the finding. Does it point to a cloud service domain — for example, something ending in `*.github.io`, `*.amazonaws.com`, `*.azurewebsites.net`, or `*.herokudns.com`?
+  </Step>
+  <Step title="Visit the subdomain">
+    Open the subdomain in a browser or with `curl`. Does the response return a "not found", "NoSuchBucket", "There is no app configured at that hostname", or similar error message from the cloud provider? These messages indicate the resource has been deleted but the DNS record still exists.
+  </Step>
+  <Step title="Check if the cloud resource exists">
+    Verify whether the specific resource referenced by the CNAME is registered. For GitHub Pages, search for the username and repository. For S3, check whether a bucket with that exact name exists. For Heroku, try accessing the app name directly.
+  </Step>
+  <Step title="Confirm and report">
+    If the resource is unclaimed and claimable, this is a confirmed subdomain takeover candidate. Document the subdomain, the CNAME value, the cloud provider, and the provider's error response before reporting.
+  </Step>
+</Steps>
+
+## Filtering noise
+
+Use `--min-severity HIGH` to restrict the report to findings that are most likely to represent real takeover vectors and skip MEDIUM and lower findings that require more investigation.
+
+```bash
+python3 takeovflow.py -d example.com --min-severity HIGH
+```
+
+<Warning>
+MEDIUM severity CNAME matches — including Akamai (`edgesuite.net`, `akamai.net`, `akamaized.net`), CloudFront (`cloudfront.net`), Azure API Management (`azure-api.net`), and Azure Cloud App (`cloudapp.net`) — often represent legitimate CDN configurations rather than takeover vectors. Always verify the HTTP response and the provider's behavior before treating a MEDIUM finding as confirmed.
+</Warning>

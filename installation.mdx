@@ -1,0 +1,94 @@
+---
+title: "Install takeovflow and its external tool dependencies"
+description: "Clone the takeovflow repository and install all required external tools: subfinder, assetfinder, dnsx, httpx, subjack, nuclei, dig, jq, and curl."
+---
+
+takeovflow is a Python script with no Python package dependencies of its own, but it relies on several external command-line tools to run its scan phases. You need Python 3.8 or later and a working Go installation to install the Go-based tools. The script checks which tools are available at startup and skips any phases that depend on missing tools — it never aborts due to a missing dependency.
+
+<Steps>
+  <Step title="Clone the repository">
+    Clone takeovflow from GitHub and make the script executable.
+
+    ```bash
+    git clone https://github.com/theoffsecgirl/takeovflow.git && cd takeovflow && chmod +x takeovflow.py
+    ```
+  </Step>
+
+  <Step title="Verify your Python version">
+    takeovflow requires Python 3.8 or later. Check your installed version before continuing.
+
+    ```bash
+    python3 --version
+    ```
+
+    The output should show `Python 3.8.x` or higher. If your system Python is older, install a newer version using your OS package manager or [pyenv](https://github.com/pyenv/pyenv).
+  </Step>
+
+  <Step title="Install the Go-based tools">
+    Most of takeovflow's external dependencies are Go binaries. Install them individually using `go install`. Each command fetches and compiles the latest release.
+
+    <CodeGroup>
+
+    ```bash subfinder
+    go install github.com/projectdiscovery/subfinder/v2/cmd/subfinder@latest
+    ```
+
+    ```bash assetfinder
+    go install github.com/tomnomnom/assetfinder@latest
+    ```
+
+    ```bash dnsx
+    go install github.com/projectdiscovery/dnsx/cmd/dnsx@latest
+    ```
+
+    ```bash httpx
+    go install github.com/projectdiscovery/httpx/cmd/httpx@latest
+    ```
+
+    ```bash subjack
+    go install github.com/haccer/subjack@latest
+    ```
+
+    ```bash nuclei
+    go install github.com/projectdiscovery/nuclei/v3/cmd/nuclei@latest
+    ```
+
+    </CodeGroup>
+
+    After installation, ensure your Go binary path is in `$PATH`. Go binaries are installed to `$(go env GOPATH)/bin` — typically `~/go/bin`. Add this to your shell profile if it is not already there:
+
+    ```bash
+    export PATH="$PATH:$(go env GOPATH)/bin"
+    ```
+  </Step>
+
+  <Step title="Verify the installation">
+    Confirm takeovflow runs correctly and that its version flag works.
+
+    ```bash
+    python3 takeovflow.py --version
+    ```
+
+    ```bash
+    python3 takeovflow.py --help
+    ```
+
+    The `--version` command prints the current version (for example, `takeovflow 1.5.1`). The `--help` command shows all available flags grouped by category.
+  </Step>
+</Steps>
+
+<Info>
+  takeovflow checks for all required tools at startup and prints a list of any that are missing. Phases that depend on missing tools are skipped automatically. For example, if `subjack` is not installed, the subjack confirmation step is skipped but CNAME fingerprinting and nuclei scanning continue unaffected. You do not need to install every tool to get useful results.
+</Info>
+
+<Tip>
+  `dig`, `jq`, and `curl` are typically available through your system package manager. On most Linux distributions and macOS, `dig` is pre-installed. Install `jq` and `curl` with:
+
+  ```bash
+  # Debian / Ubuntu (dig is in dnsutils)
+  sudo apt install dnsutils jq curl
+
+  # macOS (with Homebrew — dig is pre-installed via macOS)
+  brew install jq curl
+  ```
+</Tip>

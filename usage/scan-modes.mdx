@@ -1,0 +1,78 @@
+---
+title: "takeovflow scan modes: passive, active, and full pipeline"
+description: "takeovflow supports three scan modes: full pipeline, passive-only subdomain discovery, and active-only scanning against a known subdomain list."
+---
+
+takeovflow is built around a two-phase pipeline: a **passive** discovery phase that enumerates subdomains via `subfinder` and `assetfinder`, and an **active** phase that resolves, probes, and fingerprints those subdomains for takeover vulnerabilities using `dnsx`, `httpx`, `subjack`, `nuclei`, and CNAME pattern matching. By default both phases run in sequence. When you only need one half of the pipeline — for example, to enumerate subdomains without scanning, or to run active checks against a list you already have — you can isolate each phase with a dedicated flag.
+
+<Tabs>
+  <Tab title="Full Pipeline">
+    The default mode runs passive discovery followed by the complete active scan. takeovflow first collects subdomains with `subfinder` and `assetfinder`, deduplicates the results, then pipes the combined list through DNS resolution, HTTP probing, subjack, nuclei, and concurrent CNAME fingerprinting.
+
+    ```bash
+    python3 takeovflow.py -d example.com -v
+    ```
+
+    Use `-v` to see each tool invocation and intermediate results as they stream in. Omit it for a quieter run that only prints summary lines.
+  </Tab>
+  <Tab title="Passive Only">
+    Pass `--passive-only` to stop after subdomain discovery. takeovflow will run `subfinder` and `assetfinder`, deduplicate the output, write the combined subdomain list, and exit without invoking any active scanners — no subjack, no nuclei, no CNAME resolution.
+
+    ```bash
+    python3 takeovflow.py -d example.com --passive-only
+    ```
+
+    This is useful when you want to collect scope before deciding whether to proceed with active scanning, or when active scanning is outside the rules of engagement for a given target.
+  </Tab>
+  <Tab title="Active Only">
+    Pass `--active-only` to skip passive discovery entirely and jump straight to the active phase. Because there are no subdomains to discover, you must supply a pre-built subdomain list with `--subs-file` (or a multi-domain file via `--file`).
+
+    ```bash
+    python3 takeovflow.py --active-only --subs-file subdomains.txt -d example.com
+    ```
+
+    Use `-d` to set the domain label that appears in the report. If you omit `-d` when using `--active-only`, takeovflow will use `scope` as the report label.
+  </Tab>
+</Tabs>
+
+## Multiple targets
+
+You can provide targets in three ways and mix them in any combination.
+
+**File of domains** — one domain per line, lines beginning with `#` are ignored:
+
+```bash
+python3 takeovflow.py -f scope.txt
+```
+
+**Comma-separated list** — pass all domains as a single argument:
+
+```bash
+python3 takeovflow.py -l example.com,target.io,scope.net
+```
+
+**Single domain** — the simplest form, used throughout the examples in this guide:
+
+```bash
+python3 takeovflow.py -d example.com
+```
+
+You can combine `-d`, `-f`, and `-l` in one invocation. takeovflow deduplicates the merged list before scanning.
+
+<Info>
+  `--passive-only` and `--active-only` are mutually exclusive. Passing both flags at the same time will cause takeovflow to exit with an error before any scanning begins.
+</Info>
+
+<Warning>
+  Running `--active-only` without also supplying `--subs-file` or `--file` will cause takeovflow to exit immediately with an error. The active phase has no subdomain list to work from without one of those flags.
+</Warning>
+
+## Quiet mode for automation
+
+Pass `-q` / `--quiet` to suppress the startup banner and all intermediate status lines. In quiet mode takeovflow only emits fatal errors and the final report path when the scan completes, making it safe to wrap in shell scripts or CI pipelines without polluting captured output.
+
+```bash
+python3 takeovflow.py -d example.com --quiet --json-output
+```
+
+`--quiet` and `--verbose` are mutually exclusive — passing both will exit with an error.

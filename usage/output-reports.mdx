@@ -1,0 +1,97 @@
+---
+title: "takeovflow Markdown and JSON report formats explained"
+description: "takeovflow generates timestamped Markdown and optional JSON reports. Learn the report format, filename conventions, and how to filter findings by severity."
+---
+
+At the end of every scan takeovflow writes at least one report to disk: a Markdown file that is always generated, and an optional JSON file enabled by the `--json-output` flag. Both files are written to the current working directory unless you override the location with `--output-dir`. Once the scan finishes, the absolute path to each report is printed to stdout regardless of quiet mode, so downstream scripts can reliably capture the output location.
+
+## Markdown report
+
+The Markdown report is always generated. Its filename follows the pattern `takeovflow_report_YYYYMMDD_HHMM.md`, where the timestamp is the UTC time at which the scan completed. For example, a scan finishing on 16 April 2024 at 15:23 UTC produces:
+
+```text
+takeovflow_report_20240416_1523.md
+```
+
+By default the file lands in the current working directory. Override this with `--output-dir ./reports`.
+
+The report is structured in three layers:
+
+1. **Summary table** — a high-level overview across all scanned domains: total domains analyzed, subdomains discovered, DNS-resolved subdomains, live HTTP services, total potential takeovers, and a breakdown of CRITICAL and HIGH severity counts.
+
+2. **Per-domain section** — one section per domain, each containing a compact stats table followed by a **Potential Takeovers** table sorted by severity (CRITICAL first). Each row shows the severity level, the detection source (`subjack`, `nuclei`, or `cname-pattern`), and the finding detail (raw tool output or a `subdomain → CNAME (service)` notation).
+
+3. **Supporting data** — beneath the takeover table, each domain section lists up to 100 live HTTP services discovered by `httpx`, followed by up to 100 discovered subdomains. Lists longer than 100 entries are truncated with a count of remaining items.
+
+## JSON report
+
+Pass `--json-output` to generate a machine-readable JSON report alongside the Markdown file. The JSON filename follows the same timestamp convention:
+
+```text
+takeovflow_report_20240416_1523.json
+```
+
+The JSON structure mirrors the internal scan summary object and includes tool metadata, timing, and a `domains` map keyed by domain name:
+
+```json
+{
+  "tool": "takeovflow",
+  "version": "1.5.1",
+  "started": "2024-04-16T15:23:00+00:00",
+  "finished": "2024-04-16T15:24:12+00:00",
+  "domains": {
+    "example.com": {
+      "subdomains": ["blog.example.com", "cdn.example.com"],
+      "resolved": ["blog.example.com", "cdn.example.com"],
+      "httpx": [{"raw": "blog.example.com [200] [Blog Title]"}],
+      "potential_takeovers": [
+        {
+          "source": "cname-pattern",
+          "subdomain": "blog.example.com",
+          "cname": "example.github.io.",
+          "service": "GitHub Pages",
+          "severity": "HIGH"
+        }
+      ]
+    }
+  }
+}
+```
+
+Each entry in `potential_takeovers` always contains `source` and `severity`. The remaining fields vary by source: `cname-pattern` findings include `subdomain`, `cname`, and `service`; `subjack` and `nuclei` findings include a `raw` string with the tool's original output line.
+
+## Filtering by severity
+
+Use `--min-severity` to exclude findings below a chosen threshold from both reports. takeovflow recognises five severity levels in descending order:
+
+| Level | Meaning |
+|-------|---------|
+| `CRITICAL` | Confirmed takeover vector, immediate action required |
+| `HIGH` | Very likely vulnerable, immediate action recommended |
+| `MEDIUM` | Needs manual verification |
+| `LOW` | Informational, low risk |
+| `INFO` | Context only |
+
+The default is `INFO`, which includes all findings. Setting `--min-severity HIGH` drops MEDIUM, LOW, and INFO findings and only writes HIGH and CRITICAL findings to the reports.
+
+```bash
+python3 takeovflow.py -d example.com --min-severity HIGH
+```
+
+The filter is applied after deduplication and before any output is written, so it affects both the Markdown table and the `potential_takeovers` array in the JSON.
+
+## Output directory
+
+Pass `--output-dir DIR` to write reports to a custom location. takeovflow calls `mkdir -p` on the path before writing, so nested directories that do not yet exist are created automatically.
+
+```bash
+python3 takeovflow.py -f scope.txt --output-dir ./results/2024-04-16
+```
+
+<Tip>
+  Combine `--quiet` and `--json-output` for clean machine-readable output in automation pipelines. Quiet mode suppresses all intermediate text, and the only line printed to stdout is the report path — which your script can capture directly.
+
+  ```bash
+  python3 takeovflow.py -d example.com --quiet --json-output --output-dir ./results
+  ```
+</Tip>

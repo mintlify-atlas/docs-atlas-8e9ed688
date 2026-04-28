@@ -1,0 +1,60 @@
+---
+title: "How takeovflow assigns severity levels to scan findings"
+description: "takeovflow assigns CRITICAL, HIGH, MEDIUM, LOW, or INFO severity to each finding. Learn what each level means and how to filter results with --min-severity."
+---
+
+takeovflow assigns a severity level to every finding it reports. Severity is determined per-finding based on two factors: the detection source (CNAME pattern matching, subjack, or nuclei) and the specific provider or template that triggered the match. Because multiple sources can detect the same subdomain, each contributes findings with their own severity — findings are deduplicated after collection, retaining the severity from the originating source.
+
+## Severity levels
+
+| Level | Meaning |
+|-------|---------|
+| CRITICAL | Confirmed takeover vector, immediate action required |
+| HIGH | Very likely vulnerable, immediate action recommended |
+| MEDIUM | Needs manual verification |
+| LOW | Informational, low risk |
+| INFO | Context only |
+
+## How severity is determined per source
+
+**cname-pattern**
+
+Severity is hardcoded per provider in the `CNAME_SERVICES` constant in `takeovflow.py`. Each entry in the list is a tuple of `(pattern, service_name, severity)`. For example, GitHub Pages (`github.io`) is assigned `HIGH` while AWS CloudFront (`cloudfront.net`) is assigned `MEDIUM`. See [CNAME fingerprints: 55 supported cloud providers](/reference/supported-providers) for the full table.
+
+**subjack**
+
+All findings reported by subjack are assigned `HIGH` severity unconditionally, regardless of the provider subjack identified.
+
+**nuclei**
+
+Severity is parsed directly from nuclei's own output line. takeovflow searches for a severity tag using the regular expression `\[(critical|high|medium|low|info)\]` (case-insensitive). The matched tag is uppercased and used as the finding's severity. If no tag is found in the output line, severity defaults to `MEDIUM`.
+
+## Filtering by minimum severity
+
+Use `--min-severity LEVEL` to exclude findings below a given threshold from the report. The severity order used internally is:
+
+| Severity | Numeric rank |
+|----------|-------------|
+| CRITICAL | 0 |
+| HIGH | 1 |
+| MEDIUM | 2 |
+| LOW | 3 |
+| INFO | 4 |
+
+A finding is included when its numeric rank is **less than or equal to** the threshold rank. In other words, lower numbers mean higher severity — only findings that are at least as severe as the threshold are kept.
+
+For example, `--min-severity HIGH` sets a threshold of `1`, so only `CRITICAL` (0) and `HIGH` (1) findings are included; `MEDIUM`, `LOW`, and `INFO` findings are excluded.
+
+```bash
+# Keep only CRITICAL and HIGH findings
+python3 takeovflow.py -d example.com --min-severity HIGH
+
+# Keep only CRITICAL findings
+python3 takeovflow.py -d example.com --min-severity CRITICAL
+```
+
+The default value is `INFO`, which keeps all findings regardless of severity.
+
+## Report ordering
+
+In the generated Markdown report, findings within each domain section are sorted from highest to lowest severity — `CRITICAL` first, then `HIGH`, `MEDIUM`, `LOW`, and `INFO` last. This ensures the most actionable findings are visible at the top of the report without scrolling.

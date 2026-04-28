@@ -1,133 +1,61 @@
 ---
-title: "Introduction"
-description: "Welcome to the new home for your documentation"
-icon: 'star'
+title: "takeovflow: subdomain takeover scanner for bug bounty"
+description: "takeovflow scans subdomains for takeover vulnerabilities using passive discovery, active HTTP analysis, and CNAME fingerprinting across 55 cloud providers."
 ---
 
-## Setting up
+takeovflow is a command-line tool built for bug bounty hunters and security researchers that automates subdomain takeover detection. It combines passive subdomain discovery, active HTTP analysis, and concurrent CNAME pattern matching to surface vulnerable subdomains pointing at unclaimed cloud services — and generates structured Markdown and JSON reports for triage.
 
-Get your documentation site up and running in minutes.
-
-<Card
-  title="Start here"
-  icon="rocket"
-  href="/quickstart"
-  horizontal
->
-  Follow our three step quickstart guide.
-</Card>
-
-## Make it yours
-
-Design a docs site that looks great and empowers your users.
-
-<Columns cols={2}>
-  <Card
-    title="Edit locally"
-    icon="pen-to-square"
-    href="/development"
-  >
-    Edit your docs locally and preview them in real time.
+<CardGroup cols={2}>
+  <Card title="Installation" icon="download" href="/installation">
+    Install takeovflow and its external tool dependencies in minutes
   </Card>
-  <Card
-    title="Customize your site"
-    icon="palette"
-    href="/essentials/settings"
-  >
-    Customize the design and colors of your site to match your brand.
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Run your first subdomain takeover scan against a target domain
   </Card>
-    <Card
-    title="Set up navigation"
-    icon="map"
-    href="/essentials/navigation"
-  >
-    Organize your docs to help users find what they need and succeed with your product.
+  <Card title="Command Reference" icon="terminal" href="/usage/command-reference">
+    Every flag and argument documented with defaults and examples
   </Card>
-  <Card
-    title="API documentation"
-    icon="terminal"
-    href="/api-reference/introduction"
-  >
-    Auto-generate API documentation from OpenAPI specifications.
+  <Card title="Supported Providers" icon="cloud" href="/reference/supported-providers">
+    55 CNAME fingerprints across GitHub, AWS, Azure, Heroku, and more
   </Card>
-</Columns>
+</CardGroup>
 
-## Create beautiful pages
+## How takeovflow works
 
-Everything you need to create world-class documentation.
+takeovflow runs three phases in sequence, each building on the previous:
 
-<Columns cols={2}>
-  <Card
-    title="Write with MDX"
-    icon="pen-fancy"
-    href="/essentials/markdown"
-  >
-    Use MDX to style your docs pages.
-  </Card>
-  <Card
-    title="Code samples"
-    icon="code"
-    href="/essentials/code"
-  >
-    Add sample code to demonstrate how to use your product.
-  </Card>
-  <Card
-    title="Images"
-    icon="image"
-    href="/essentials/images"
-  >
-    Display images and other media.
-  </Card>
-  <Card
-    title="Reusable snippets"
-    icon="recycle"
-    href="/essentials/reusable-snippets"
-  >
-    Write once and reuse across your docs.
-  </Card>
-</Columns>
+<Steps>
+  <Step title="Passive discovery">
+    Enumerate subdomains using `subfinder` and `assetfinder`. Results are deduplicated and written to a temporary file for the next phase.
+  </Step>
+  <Step title="Active scanning">
+    Resolve discovered subdomains with `dnsx`, probe HTTP services with `httpx`, then confirm takeover candidates with `subjack` and `nuclei`. All phases run concurrently.
+  </Step>
+  <Step title="CNAME fingerprinting">
+    Each subdomain is checked against 55 cloud provider CNAME patterns using concurrent `dig` calls. Matches are assigned severity levels and deduplicated across all detection sources.
+  </Step>
+  <Step title="Report generation">
+    Results are written to a timestamped Markdown report and optionally a JSON file, filtered by your chosen minimum severity level.
+  </Step>
+</Steps>
 
-## Make your content agent ready
+## Key capabilities
 
-Make your docs work for humans and AI agents alike.
+<CardGroup cols={2}>
+  <Card title="Scan modes" icon="sliders" href="/usage/scan-modes">
+    Run passive-only, active-only, or full pipeline scans depending on your recon workflow
+  </Card>
+  <Card title="Workflow integration" icon="arrows-rotate" href="/guides/workflow-integration">
+    Chain takeovflow with subfinder, assetfinder, and other recon tools in a single pipeline
+  </Card>
+  <Card title="Interpreting results" icon="magnifying-glass-chart" href="/guides/interpreting-results">
+    Understand severity levels and decide which findings need immediate action
+  </Card>
+  <Card title="Changelog" icon="clock-rotate-left" href="/reference/changelog">
+    Version history and what changed in each release
+  </Card>
+</CardGroup>
 
-<Columns cols={2}>
-  <Card
-    title="Prompt component"
-    icon="robot"
-    href="/agent-ready/prompt"
-  >
-    Embed shareable AI prompts readers can copy or open in Cursor.
-  </Card>
-  <Card
-    title="Visibility"
-    icon="eye"
-    href="/agent-ready/visibility"
-  >
-    Show different content to humans and agents reading your docs.
-  </Card>
-  <Card
-    title="Contextual menu"
-    icon="bolt"
-    href="/agent-ready/contextual"
-  >
-    Give readers one-click access to Claude, ChatGPT, Cursor, and more.
-  </Card>
-  <Card
-    title="AI coding tools"
-    icon="wand-magic-sparkles"
-    href="/ai-tools/claude-code"
-  >
-    Set up Claude Code, Cursor, or Windsurf with Mintlify's skill.
-  </Card>
-</Columns>
-
-## Need inspiration?
-
-<Card
-  title="See complete examples"
-  icon="stars"
-  href="https://mintlify.com/customers"
->
-  Browse our showcase of exceptional documentation sites.
-</Card>
+<Note>
+  takeovflow is intended for authorized security testing only — bug bounty programs, labs, and explicitly scoped audits. Only scan targets you have permission to test.
+</Note>

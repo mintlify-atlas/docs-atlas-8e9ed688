@@ -1,0 +1,91 @@
+---
+title: "takeovflow CNAME fingerprints: 55 supported cloud providers"
+description: "takeovflow detects subdomain takeover candidates across 55 cloud providers using CNAME pattern matching. Each provider has an assigned severity level."
+---
+
+takeovflow identifies potential subdomain takeover candidates by resolving the CNAME record for each discovered subdomain and comparing it against a list of known cloud provider patterns. When a subdomain's CNAME contains a recognized pattern — for example, `github.io` or `amazonaws.com` — and the underlying cloud resource appears unclaimed, the subdomain may be vulnerable to takeover. A match does not by itself confirm a takeover; it signals that the subdomain points to a cloud service that should be investigated.
+
+## Provider fingerprint table
+
+| Provider | CNAME Pattern | Severity |
+|----------|---------------|----------|
+| AWS S3 / Elastic Beanstalk | amazonaws.com | HIGH |
+| AWS CloudFront | cloudfront.net | MEDIUM |
+| AWS Elastic Beanstalk | elasticbeanstalk.com | HIGH |
+| Azure Web Apps | azurewebsites.net | HIGH |
+| Azure Traffic Manager | trafficmanager.net | HIGH |
+| Azure Blob Storage | blob.core.windows.net | HIGH |
+| Azure API Management | azure-api.net | MEDIUM |
+| Azure Cloud App | cloudapp.net | MEDIUM |
+| Heroku | herokudns.com | HIGH |
+| Heroku | herokuapp.com | HIGH |
+| GitHub Pages | github.io | HIGH |
+| GitHub Raw | githubusercontent.com | MEDIUM |
+| Fastly CDN | fastly.net | HIGH |
+| Akamai | edgesuite.net | MEDIUM |
+| Akamai | akamai.net | MEDIUM |
+| Akamai | akamaized.net | MEDIUM |
+| Unbounce | unbouncepages.com | HIGH |
+| WordPress.com | wordpress.com | HIGH |
+| Zendesk | zendesk.com | HIGH |
+| Shopify | shopify.com | HIGH |
+| HelpJuice | helpjuice.com | HIGH |
+| HelpScout Docs | helpscoutdocs.com | HIGH |
+| Ghost | ghost.io | HIGH |
+| ReadMe.io | readme.io | HIGH |
+| Surge.sh | surge.sh | HIGH |
+| Strikingly | strikingly.com | HIGH |
+| Squarespace | squarespace.com | MEDIUM |
+| Wix | wixdns.net | MEDIUM |
+| Weebly | weebly.com | HIGH |
+| Tilda | tilda.ws | HIGH |
+| Webflow | webflow.io | HIGH |
+| Netlify | netlify.app | HIGH |
+| Netlify | netlify.com | HIGH |
+| Vercel | vercel.app | HIGH |
+| GitBook | gitbook.io | HIGH |
+| GitBook | gitbook.com | HIGH |
+| Atlassian Statuspage | statuspage.io | HIGH |
+| UserVoice | uservoice.com | HIGH |
+| Salesforce Desk | desk.com | HIGH |
+| Freshdesk | freshdesk.com | HIGH |
+| Intercom | intercom.help | HIGH |
+| Cargo | cargo.site | HIGH |
+| Pantheon | pantheonsite.io | HIGH |
+| Kinsta | kinsta.cloud | HIGH |
+| Flywheel | flywheel.io | HIGH |
+| Shopify (myshopify) | myshopify.com | HIGH |
+| HubSpot | hubspot.com | MEDIUM |
+| HubSpot Sites | hs-sites.com | HIGH |
+| Bitbucket Pages | bitbucket.io | HIGH |
+| Smartling | smartling.com | HIGH |
+| Launchrock | launchrock.com | HIGH |
+| AfterShip | aftership.com | HIGH |
+| Sprintful | sprintful.com | HIGH |
+| Big Cartel | bigcartel.com | HIGH |
+| FeedPress | feedpress.me | HIGH |
+| Cargo Collective | cargocollective.com | HIGH |
+| SimpleBooklet | simplebooklet.com | HIGH |
+| Acquia | acquia-sites.com | HIGH |
+
+## How matching works
+
+For each subdomain, takeovflow runs `dig <subdomain> CNAME +short` and converts the result to lowercase. The resolved CNAME string is then checked against every pattern in `CNAME_SERVICES` using a simple Python `in` membership test:
+
+```python
+if pattern in cname:
+    # match — report finding with service name and severity
+```
+
+Matching is case-insensitive because the CNAME output is lowercased before comparison. The list is evaluated in order and the **first matching pattern wins** — a subdomain is reported once with the service and severity of the first match. If no pattern matches, the subdomain is not reported by the CNAME phase.
+
+## Severity assignment
+
+Each fingerprint carries a hardcoded severity based on how exploitable a takeover at that provider typically is:
+
+- **HIGH** — the provider (e.g., GitHub Pages, Heroku, Netlify, Vercel) allows unauthenticated resource registration, making an unclaimed subdomain straightforwardly exploitable. Treat HIGH findings as requiring immediate manual verification.
+- **MEDIUM** — the provider is a CDN or enterprise platform (e.g., CloudFront, Akamai, HubSpot, Squarespace) where a CNAME match is more likely to reflect a legitimate configuration. Findings still warrant review, but false positives are more common.
+
+<Info>
+CNAME checking runs concurrently using `ThreadPoolExecutor`, controlled by `--threads` (default: 50). On large subdomain lists this delivers up to 50x faster analysis compared to sequential `dig` calls.
+</Info>

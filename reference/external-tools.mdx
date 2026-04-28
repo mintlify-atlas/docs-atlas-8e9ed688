@@ -1,0 +1,39 @@
+---
+title: "External tools takeovflow depends on and how they degrade"
+description: "takeovflow orchestrates subfinder, assetfinder, dnsx, httpx, subjack, nuclei, dig, jq, and curl. Each tool handles a specific scan phase and is optional."
+---
+
+takeovflow does not bundle any external binaries. Instead, it checks for each tool at startup using Python's `shutil.which()` and reports which tools are unavailable. If a tool is missing, the phase it handles is skipped and the scan continues with whatever tools are present — takeovflow never aborts due to a missing dependency.
+
+## Tool reference
+
+| Tool | Phase | Purpose | Required? |
+|------|-------|---------|-----------|
+| subfinder | Passive | Subdomain enumeration | Recommended |
+| assetfinder | Passive | Subdomain enumeration | Recommended |
+| dnsx | Active | DNS resolution of subdomains | Recommended |
+| httpx | Active | HTTP probing and status codes | Recommended |
+| subjack | Active | Takeover confirmation via fingerprints | Optional |
+| nuclei | Active | Template-based takeover detection | Optional |
+| dig | CNAME | CNAME record lookups | Recommended |
+| jq | Utility | JSON processing in pipelines | Optional |
+| curl | Utility | Fetching subjack fingerprints | Optional |
+
+## Graceful degradation
+
+takeovflow adapts to whatever subset of tools is installed:
+
+- **No subfinder or assetfinder** — passive subdomain discovery is skipped entirely. No subdomains will be collected unless you supply them yourself. Use `--active-only` with `--subs-file` to feed an external subdomain list directly into the active phase.
+- **No dnsx** — the DNS resolution step is skipped and the raw subdomain list is passed as-is to subsequent phases, without validating which subdomains actually resolve.
+- **No httpx** — the HTTP probing phase is skipped. Only CNAME fingerprinting and subjack/nuclei (if available) will run against the subdomain list.
+- **No subjack** — the subjack takeover confirmation phase is skipped. CNAME pattern matching and nuclei will still run independently.
+- **No nuclei** — the nuclei template-based detection phase is skipped. CNAME pattern matching and subjack will still run independently.
+- **No dig** — the CNAME fingerprinting phase is skipped entirely. Without `dig`, takeovflow cannot resolve CNAME records and none of the 55 provider patterns will be evaluated.
+
+<Info>
+At minimum, install `dig` (pre-installed on most Linux and macOS systems) and at least one of `subfinder` or `assetfinder` for a useful passive scan. Alternatively, skip passive discovery entirely and run `--active-only` with an external subdomain list.
+</Info>
+
+## Tool installation
+
+For installation instructions for all dependencies, see [Installation](/installation).

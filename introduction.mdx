@@ -1,0 +1,69 @@
+---
+title: "takeovflow: how the subdomain takeover scanner works"
+description: "takeovflow automates subdomain takeover detection using passive discovery, active HTTP analysis, and CNAME fingerprinting across 55 cloud providers."
+---
+
+takeovflow is a command-line tool written in Python for bug bounty hunters, pentesters, and security researchers who need to identify vulnerable subdomains pointing at unclaimed cloud services. It runs a three-phase scan pipeline — passive subdomain discovery, active HTTP and DNS analysis, and concurrent CNAME fingerprinting — then produces structured Markdown and JSON reports ready for triage.
+
+## Key features
+
+<CardGroup cols={2}>
+  <Card title="Installation" icon="download" href="/installation">
+    Install takeovflow and all required external tool dependencies
+  </Card>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Run your first subdomain takeover scan in five minutes
+  </Card>
+  <Card title="Scan modes" icon="sliders" href="/usage/scan-modes">
+    Choose passive-only, active-only, or a full pipeline scan
+  </Card>
+  <Card title="Supported providers" icon="cloud" href="/reference/supported-providers">
+    55 CNAME fingerprints across AWS, Azure, GitHub, Heroku, and more
+  </Card>
+</CardGroup>
+
+## Three-phase scan pipeline
+
+takeovflow runs three phases in sequence, each building on the previous.
+
+<Steps>
+  <Step title="Passive discovery">
+    takeovflow runs `subfinder` and `assetfinder` against your target domain, collects all returned subdomain names, deduplicates them, and writes a combined list to a temporary file. If either tool is missing it skips it — it does not abort.
+  </Step>
+  <Step title="Active scanning">
+    The discovered subdomain list is resolved through `dnsx` to confirm live DNS records. `httpx` then probes each resolved host for active HTTP services. `subjack` and `nuclei` run against the same list to confirm takeover candidates. All active scanners run concurrently.
+  </Step>
+  <Step title="CNAME fingerprinting">
+    Each subdomain is queried with `dig` to retrieve its CNAME record. The result is matched against 55 provider-specific patterns (GitHub Pages, AWS S3, Azure, Heroku, Netlify, Vercel, Shopify, and more). Each match is assigned a severity of HIGH or MEDIUM and deduplicated across all detection sources.
+  </Step>
+  <Step title="Report generation">
+    All findings are filtered by your chosen minimum severity level and written to a timestamped Markdown file (`takeovflow_report_YYYYMMDD_HHMM.md`). Passing `--json-output` also produces a JSON report with the same findings and scan metadata.
+  </Step>
+</Steps>
+
+## Supported detection methods
+
+takeovflow uses three complementary approaches to maximize coverage.
+
+**Passive discovery** relies on `subfinder` and `assetfinder` to enumerate subdomains without sending requests directly to the target. Results from both tools are merged and deduplicated before the active phase begins.
+
+**Active analysis** uses four tools in sequence:
+
+- `dnsx` resolves subdomains to confirm live DNS records and filters out dead entries before more expensive scans run.
+- `httpx` probes each live subdomain for HTTP services, capturing status codes, titles, and redirect chains.
+- `subjack` checks for known takeover signatures using a fingerprint database it downloads at runtime.
+- `nuclei` runs templates tagged `takeover` against the subdomain list and parses severity from its structured output.
+
+**CNAME fingerprinting** is takeovflow's built-in detection layer that runs independently of the external tools above. It uses concurrent `dig` queries and matches each CNAME against 55 hardcoded provider patterns. It is the only detection method that works even when subjack and nuclei are not installed.
+
+## Output formats
+
+takeovflow always generates a Markdown report at the end of a scan.
+
+**Markdown report** (`takeovflow_report_YYYYMMDD_HHMM.md`) — a human-readable file with a summary table showing total subdomains discovered, resolved, and HTTP services found, followed by per-domain sections with findings sorted by severity. Findings include the source tool, severity level, subdomain, and CNAME or raw output detail.
+
+**JSON report** (`takeovflow_report_YYYYMMDD_HHMM.json`) — produced when you pass `--json-output`. Contains the full structured scan result including tool name, version, UTC start and finish timestamps, and all domain data. Suitable for piping into downstream tooling or CI/CD pipelines.
+
+<Note>
+  takeovflow is intended for authorized security testing only. Only scan domains and subdomains you have explicit permission to test — bug bounty program scope, private lab environments, or explicitly scoped engagements.
+</Note>
